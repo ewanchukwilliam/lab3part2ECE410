@@ -1,0 +1,360 @@
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+DATES
+INTRODUCTION
+In this lab, you are required to modify and verify the functionality of a simple central processing unit (CPU) implemented
+using standard Register Transfer Level (RTL) blocks. Near-complete VHDL models of the CPU are provided as a
+starting point, and you will add new functionality to extend its instruction set and control logic.
+Through this lab, you will gain insight into how a CPU that fetches, decodes and executes machine instructions can be
+implemented using a controller and datapath architecture. In the first part, you will complete and test a single-cycle CPU
+capable of executing basic load, store and arithmetic instructions, and then expand it to support branch operations. In
+the second part, you will work with a multi-cycle CPU model, implementing the controller finite state machine (FSM)
+and adding new instructions. Finally, you will write a short program that demonstrates the functionality of your design,
+showing how the CPU executes a sequence of instructions to perform a simple computation.
+LEARNING OBJECTIVES
+● To understand the principles of CPU design and the differences between single-cycle and multi-cycle
+implementations.
+● To learn how to construct and verify a CPU datapath using standard RTL components such as
+multiplexers, registers, ALUs, and control units.
+● To implement the Finite State Machine controller for a CPU that sequences the fetching, decoding and
+execution of the binary instructions that are stored in the program memory.
+● To enhance the existing CPU design by upgrading the datapath controller and extending the instruction set
+with new operations.
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 1/16
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+PRE-LAB Marks 5%
+● Carefully read the lab manual before proceeding with the VHDL design. All of the pre-lab work will be
+checked by the LI/TA by the end of the first lab session. In case of any problems or questions ask the
+LI/TA for clarification and help.
+● Read the description provided for the working single-cycle CPU that is provided in this manual.
+● Study the provided datapath diagram carefully and identify all missing or unnamed signals. Create a table
+listing each missing signal, its function, and a descriptive name that reflects its purpose in the datapath (for
+example, “alu_src” or “reg_write”). Use the provided template as a reference and ensure that all signal
+names are consistent and easy to understand when reading the VHDL code.
+● The simple CPU in this lab provides load, store and arithmetic instructions. A partially verified instruction
+decoder will be given in the controller file single_cycle_controller.vhdl.
+● Neglecting the pre-lab work will very likely hinder you from completing the assigned tasks, so please make
+sure that you understand the logical operation of the controller and datapath, following their integration.
+● You are strongly encouraged to follow the code template from Canvas. However, you can choose to write
+your own code from scratch provided it satisfies all of the lab requirements.
+NOTE: The pre-lab work will be completed during the lab session under the supervision of the lab teaching staff.
+They will review your progress, provide clarification on the assigned tasks as needed, and allocate marks based on
+the completion and understanding of this work.
+BACKGROUND
+A digital computer is a system capable of performing data processing operations according to the instructions
+contained in a stored program. A program is a sequence of machine language instructions (encoded as binary
+vectors) that specify the operations, operands, and the order in which the instructions are executed. Unlike
+nonprogrammable application-specific digital systems, a computer can perform different data processing and
+control tasks by simply modifying the stored program. The ability to execute arbitrary sequences of instructions
+from an instruction set is the most important property of the general-purpose, software-programmable computer.
+The CPU of a computer consists of both sequential and combinational logic. Combinational blocks such as
+multiplexers and arithmetic logic units (ALUs) perform operations on data, while sequential elements like registers
+and counters store intermediate values and controller states that are updated over time. The combination of these
+blocks forms two major interacting subsystems: the datapath and the controller. As you will see in this lab, a very
+simple CPU can be constructed using the datapath-controller to perform arithmetic and logical operations.
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 2/16
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+A CPU is specified according to an instruction set architecture (ISA), which specifies the instructions that the
+processor can execute and how they are represented in binary form. Each instruction includes bit fields that
+identify the operation (opcode), the source and destination registers, and any immediate or address values required
+for execution. Together, these instructions define the behavior of the processor and determine how data moves
+through and is processed by the datapath. Understanding how each instruction interacts with the hardware is
+essential for extending the CPU’s capabilities and verifying that the datapath and controller work together correctly.
+The instruction set used in this lab is based on the RISC-V architecture, a modern open CPU standard that follows
+the Reduced Instruction Set Computer (RISC) design philosophy. RISC-V defines a small, efficient set of core
+instructions that can be extended for specific applications, making it widely used for both education and research
+purposes as well as in industrial applications.
+The controller generates the control signals that coordinate data movement and operations within the CPU. In this
+lab, you will work with two versions of the processor that differ in how this control is implemented.
+In the single-cycle CPU, the controller is combinational, producing all control signals in one step based on the
+instruction bits. Each instruction is completed within a single clock cycle.
+In the multi-cycle CPU, the controller is implemented as a finite state machine (FSM) that sequences instruction
+execution over multiple cycles (fetch-decode-execute). This approach allows hardware resources to be reused at
+different stages, adding complexity to the design but improving overall hardware efficiency.
+Each instruction executed by the CPU is represented as a binary word that specifies the operation to be performed
+and the operands involved. In this lab, the CPU uses a subset of a standard 32-bit instruction format where specific
+bit fields define the opcode, register operands, and immediate values. The instruction format determines how the
+controller interprets each instruction and which control signals are activated in the datapath.
+For simplicity, only a small set of basic instructions, such as load, store, arithmetic and branch operations, will be
+implemented. You will examine how these instructions are decoded and how the relevant fields (e.g., opcode and
+function bits) influence the control logic and datapath behavior.
+A RISC-V reference card is provided in the appendix to help you identify instruction formats and field definitions
+for the base instruction set. You are encouraged to refer to it while studying the datapath and during
+implementation.
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 3/16
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+Each instruction in the CPU contains several bit fields that define its purpose and operands:
+● Opcode: Specifies the general type of operation to perform (e.g., load, store, arithmetic, branch).
+● rd (Destination Register): Identifies the register that will receive the result of the operation.
+● rs1, rs2 (Source Registers): Identify the registers that supply input operands for the instruction.
+● funct3 / funct7: Provide additional bits used by the controller to determine the exact operation within an
+instruction type (for example, distinguishing between ADD and SUB). The numbers indicate their widths
+funct3 is a 3-bit field (bits [14:12]) and funct7 is a 7-bit field (bits [31:25]) in the 32-bit instruction format.
+● immediate (imm): A constant value encoded directly within the instruction, used in operations such as
+loads, stores or branches.
+These fields together determine how each instruction interacts with the datapath and which control signals are
+activated during execution.
+Datapath components:
+There is a separate VHDL file for each of the components (Multiplexers, Accumulator, Register file, ALU and
+tri-state buffer) in the resource folder.
+Adder:
+Performs simple arithmetic addition, typically used to increment the program counter (PC) or calculate branch
+target addresses.
+ALU (Arithmetic Logic Unit):
+Executes arithmetic and logical operations such as addition, subtraction and comparisons based on the control
+signals from the controller.
+Controller:
+Generates the control signals that direct the flow of data through the datapath and determine the operation
+performed in each cycle. In the single-cycle CPU the controller is combinational, while in the multi-cycle CPU it is
+implemented as an FSM with distinct execution states for each instruction.
+Instruction and Data Memory:
+These memory units store program instructions and data values accessed during execution. In the single-cycle
+CPU, the instruction memory and data memory are implemented as separate blocks: The first memory dedicated
+to storing instructions (ROM) and the other memory stores readable and writable data (RAM). In the multi-cycle
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 4/16
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+CPU, the two blocks are combined into a single shared memory that performs both functions, with the active
+operation determined by control signals from the controller.
+Extender Unit:
+Extends immediate values in width to 32 bits, preserving the sign when required. It ensures that immediate
+operands match the datapath width.
+Mux 2-to-1:
+Selects one of two 32-bit inputs based on a control signal. Multiplexers are used throughout the datapath to control
+data routing between components.
+PC Adder:
+Calculates the next program counter value by adding a fixed offset (typically 4) to the current PC, determining the
+address of the next instruction to fetch.
+Register File:
+Contains a set of general-purpose registers. It supports two simultaneous read ports and one write port, allowing
+two input operands to be read and the results to be written in a single cycle.
+Tri-State Buffer:
+Controls when data from the CPU is driven to the external output. When enabled, it passes the output value from
+the ALU to the output port; when disabled, it places the output in a high-impedance state to prevent interference
+with other signals.
+With the previous component definitions and the provided datapath diagram, you should study how each block
+interacts with the others and how control signals determine the flow of data. Understanding these connections will
+help you identify the role of each component within the instruction cycle and prepare you to complete the missing
+parts of the design.
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 5/16
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 6/16
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+PART 1 SINGLE CYCLE DATAPATH AND CONTROLLER Marks 20%
+In this part, you will complete a near-complete VHDL model of a single-cycle CPU. The design includes all major
+datapath components and a basic combinational controller capable of executing a few core instructions such as
+load, store, and add.
+Your first task is to review the provided VHDL files for all low-level components. Some modules contain missing
+logic or incomplete signal connections. Correct these issues, test each component individually, and ensure they
+operate as intended. Once verified, integrate them into the datapath.vhd file and complete the structural
+connections by naming and mapping all control and datapath status signals according to your pre-lab work.
+After assembling and verifying the base datapath, extend the design to support branch instructions (B-type), such
+as BEQ (branch if equal). To do this, you will modify the datapath and controller so that the CPU can evaluate a
+comparison between two registers and update the program counter accordingly when the branch condition is met.
+After assembling and verifying the base datapath, extend the design to support the branch instruction BEQ (Branch if
+Equal). This instruction allows the CPU to alter its normal sequential execution by comparing the values of two registers
+and, if they are equal, updating the program counter to a new address computed by adding a signed immediate offset to
+the current PC. To implement this, you will modify both the datapath and the controller so that the CPU can generate
+the branch target address, and select between the sequential or branch address based on the comparison result.
+Finally, write a short testbench that demonstrates the correct operation of the datapath and controller. The
+simulation must show the proper control signal activation, instruction execution, and program counter updates for
+each tested instruction.
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 7/16
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+Figure 2: Single-cycle CPU datapath (View high-resolution version)
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 8/16
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+PART 2 MULTICYCLE DATAPATH AND CONTROLLER Marks 30%
+In this part, you will work with a multi-cycle CPU that executes instructions over several clock cycles. The provided
+VHDL model includes a datapath similar to the one used in Part 1 that executes the same instructions, but
+modified to allow shared use of hardware resources such as memory and the ALU across multiple stages of
+instruction execution.
+Your main task is to design and implement the controller finite state machine (FSM) that coordinates the operation
+of the datapath. The FSM should correctly sequence the fetch, decode, execute, memory, and write-back stages for
+all implemented instructions. Study the provided template in multi_cycle_controller.vhd and complete the
+missing states and transitions required for proper instruction flow.
+Once the base instruction set is working, extend the controller by implementing three additional instructions of
+your choice (see Appendix), subject to approval from your TA or Lab Instructor. You must also implement a
+HALT instruction, which stops the CPU until a reset signal is applied. Clearly document how these new
+instructions were integrated into the controller FSM.
+Finally, verify your multi-cycle CPU through simulation. Your testbench should display the correct sequencing of
+the control signals and state transitions for each instruction, confirming that the controller and datapath operate
+correctly together as a functional system.
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 9/16
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+Figure 3: Instruction decoding state sequence for the initial instructions: LW, SW and ADD
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 10/16
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+Figure 4: Multi-cycle CPU datapath (View high-resolution version)
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 11/16
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+PART 3 TEST PROGRAM Marks 15%
+In this part, you will test your CPU design using a writing your own custom assembly program to demonstrate and
+further validate your CPU design. Your program should include all of the implemented instructions that can be
+executed by your CPU.
+The program should perform a meaningful computation that illustrates correct instruction sequencing, data
+movement, and control flow. Examples include performing arithmetic on an array, counting loop iterations, or
+implementing a conditional routine using branch logic.
+Assemble your program into machine code using the instruction encodings provided in the RISC-V reference card
+in the appendix. Load the resulting program into the instruction memory, simulate the CPU, and verify that each
+instruction executes as expected.
+Your simulation results should include waveform evidence showing the correct execution of instructions, control
+signal activity, and program counter behavior throughout the program’s operation. Be prepared to explain how
+your program validates the proper functioning of your datapath and controller.
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 12/16
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+LAB REPORT Marks 30%
+A formal lab report will be required as the previous labs, but with the following additions:
+● A state transition diagram of the multi-cycle CPU after all the instructions have been implemented.
+● The final controller-datapath architecture of this 32-bit CPU that shows all the control and status signals
+of the multicycle CPU.
+● Explanation of the test program used to validate the multicycle CPU.
+● Explanation of your designed instructions with examples and code.
+● Results discussion and conclusions.
+REFERENCES
+● Zybo Z7 Documentation, Tutorials and Example Projects,
+● Zybo Z7 Reference Manual
+● ECE410 VHDL Reference from the Lectures
+● Pmod SSD: Seven-segment Display Reference Manual
+● Pmod KYPD Reference Manual
+● VHDL essentials Github repository
+● VHDL Essentials Youtube Playlist
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 13/16
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+APPENDIX
+RV32I Instruction Set:
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 14/16
+RISC-V Instruction Formats
+31 27 26 25 24 20 19 15 14 12 11 7 6 0 bit fields
+funct7 rs2 rs1 funct3 rd opcode R-type
+imm[11:0] rs1 funct3 rd opcode I-type
+imm[11:5] rs2 rs1 funct3 imm[4:0] opcode S-type
+imm[12|10:5] rs2 rs1 funct3 imm[4:1|11] opcode B-type
+imm[31:12] rd opcode U-type
+imm[20|10:1|11|19:12] rd opcode J-type
+RV32I R Instructions
+Inst Name FMT Opcode funct3 func7 Description Note
+add ADD R 0110011 0x0 0x00 rd = rs1 + rs2
+sub SUB R 0110011 0x0 0x20 rd = rs1 - rs2
+xor XOR R 0110011 0x4 0x00 rd = rs1 ^ rs2
+or OR R 0110011 0x6 0x00 rd = rs1 | rs2
+and AND R 0110011 0x7 0x00 rd = rs1 & rs2
+sll Shift Left Logic R 0110011 0x1 0x00 rd = rs1 << rs2
+srl Shift Right Logic R 0110011 0x5 0x00 rd = rs1 >> rs2
+sra Shift Right Arith R 0110011 0x5 0x020 rd = rs1 >> rs2 msb-extends
+slt Set Less Than R 0110011 0x2 0x00 rd = (rs1 < rs2)?1:0
+sltu Set Less Than (U) R 0110011 0x3 0x00 rd = (rs1 < rs2)?1:0 zero-extends
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 15/16
+RV32I I Instructions
+Inst Name FMT Opcode funct3 func7 Description Note
+addi ADD Immediate I 0010011 0x0 rd = rs1 + imm
+xori XOR Immediate I 0010011 0x4 rd = rs1 ^ rs2
+ori OR Immediate I 0010011 0x6 rd = rs1 | rs2
+andi AND Immediate I 0010011 0x7 rd = rs1 & rs2
+slli Shift Left Logic Imm I 0010011 0x1 imm[5:11]=0x00 rd = rs1 << imm[0:4] msb-extends
+srli Shift Right Logic Imm I 0010011 0x5 imm[5:11]=0x00 rd = rs1 >> imm[0:4]
+srai Shift Right Arith Imm I 0010011 0x5 imm[5:11]=0x20 rd = rs1 >> imm[0:4]
+slti Set Less Than Imm I 0010011 0x2 rd = (rs1 < imm)?1:0
+sltiu Set Less Than Imm (U) I 0010011 0x3 rd = (rs1 < imm)?1:0 zero-extends
+lb Load Byte I 0000011 0x0 rd = M[rs1+imm][0:7]
+lh Load Half I 0000011 0x1 rd = M[rs1+imm][0:15]
+lw Load Word I 0000011 0x2 rd = M[rs1+imm][0:31]
+lbu Load Byte (U) I 0000011 0x4 rd = M[rs1+imm][0:7] zero-extends
+lhu Load Half (U) I 0000011 0x5 rd = M[rs1+imm][0:15] zero-extends
+jalr Jump and Link Reg I 1100111 0x0 rd = PC + 4; PC = rs1 + imm
+ecall Environment Call I 1110011 0x0 imm=0x0 transfer control to OS
+ebreak Environment Break I 1110011 0x0 imm=0x1 transfer control to debugger
+ECE410-Advanced Digital Logic Design
+LAB 3: RISC-V CPU Implemented with a
+Controller and Datapath
+Fall 2024
+Department of Electrical and Computer Engineering
+11-203 Donadeo Innovation Centre for Engineering, 9211-116 Street NW,
+University of Alberta, Edmonton, Alberta, Canada T6G 1H9 16/16
+RV32I B Instructions
+Inst Name FMT Opcode funct3 func7 Description Note
+beq Branch == B 1100011 0x0 if(rs1 == rs2) PC += imm
+bne Branch != B 1100011 0x1 if(rs1 != rs2) PC += imm
+blt Branch < B 1100011 0x4 if(rs1 < rs2) PC += imm
+bge Branch >= B 1100011 0x5 if(rs1 >= rs2) PC += imm
+bltu Branch < (U) B 1100011 0x6 if(rs1 < rs2) PC += imm zero-extends
+bgeu Branch >= (U) B 1100011 0x7 if(rs1 >= rs2) PC += imm zero-extends
+RV32I S Instructions
+Inst Name FMT Opcode funct3 func7 Description Note
+sb Store Byte S 0100011 0x0 M[rs1+imm][0:7] = rs2[0:7]
+sh Store Half S 0100011 0x1 M[rs1+imm][0:15] = rs2[0:15]
+sw Store Half S 0100011 0x2 M[rs1+imm][0:31] = rs2[0:31]
