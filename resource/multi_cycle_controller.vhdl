@@ -43,7 +43,7 @@ ARCHITECTURE behavioral OF multi_cycle_controller IS
     --------------------------------------------------------------------------
     -- State and Instruction Type Definitions
     --------------------------------------------------------------------------
-    TYPE instr IS (LW, SW, ADD, BEQ, NOP);
+    TYPE instr IS (LW, SW, ADD, SUB, ADDI, BEQ, BNE, HALT, NOP);
     TYPE instruction_type IS (U, J, I, S, B, R);
     TYPE state_type IS (
         RESET_INIT,
@@ -54,7 +54,8 @@ ARCHITECTURE behavioral OF multi_cycle_controller IS
         MEM_WB,
         ALU_WB,
         MEM_W,
-        BRANCH
+        BRANCH,
+        HALTED
     );
 
     SIGNAL current_state, next_state : state_type := RESET_INIT;
@@ -64,10 +65,12 @@ ARCHITECTURE behavioral OF multi_cycle_controller IS
     --------------------------------------------------------------------------
     -- Opcode definitions
     --------------------------------------------------------------------------
-    CONSTANT OPCODE_LW  : STD_LOGIC_VECTOR(6 DOWNTO 0) := "0000011";
-    CONSTANT OPCODE_SW  : STD_LOGIC_VECTOR(6 DOWNTO 0) := "0100011";
-    CONSTANT OPCODE_ADD : STD_LOGIC_VECTOR(6 DOWNTO 0) := "0110011";
-    CONSTANT OPCODE_BEQ : STD_LOGIC_VECTOR(6 DOWNTO 0) := "1100011";
+    CONSTANT OPCODE_LW    : STD_LOGIC_VECTOR(6 DOWNTO 0) := "0000011";
+    CONSTANT OPCODE_SW    : STD_LOGIC_VECTOR(6 DOWNTO 0) := "0100011";
+    CONSTANT OPCODE_ADD   : STD_LOGIC_VECTOR(6 DOWNTO 0) := "0110011";  -- R-type
+    CONSTANT OPCODE_ITYPE : STD_LOGIC_VECTOR(6 DOWNTO 0) := "0010011";  -- I-type ALU (ADDI)
+    CONSTANT OPCODE_BEQ   : STD_LOGIC_VECTOR(6 DOWNTO 0) := "1100011";  -- Branch
+    CONSTANT OPCODE_HALT  : STD_LOGIC_VECTOR(6 DOWNTO 0) := "1111111";  -- Custom HALT
 
     TYPE imm_codes IS ARRAY (instruction_type) OF STD_LOGIC_VECTOR(2 DOWNTO 0);
     CONSTANT imm_code : imm_codes := (
@@ -115,20 +118,48 @@ BEGIN
     --------------------------------------------------------------------------
     -- Instruction decoding and immediate selection
     --------------------------------------------------------------------------
-    WITH op_code SELECT
-        instruction <=
-            LW  WHEN OPCODE_LW,
-            SW  WHEN OPCODE_SW,
-            ADD WHEN OPCODE_ADD,
-            BEQ WHEN OPCODE_BEQ,
-            NOP WHEN OTHERS;
+    -- Instruction decoding: enhanced to distinguish SUB, BNE, ADDI
+    PROCESS (op_code, funct3, funct7_bit5)
+    BEGIN
+        -- Default values
+        instruction <= NOP;
+        instr_type <= R;
 
-    WITH op_code SELECT
-        instr_type <=
-            I WHEN OPCODE_LW,
-            S WHEN OPCODE_SW,
-            B WHEN OPCODE_BEQ,
-            R WHEN OTHERS;
+        IF op_code = OPCODE_LW THEN
+            instruction <= LW;
+            instr_type <= I;
+        ELSIF op_code = OPCODE_SW THEN
+            instruction <= SW;
+            instr_type <= S;
+        ELSIF op_code = OPCODE_ADD THEN
+            instr_type <= R;
+            -- Distinguish ADD vs SUB using funct7_bit5
+            IF funct3 = "000" AND funct7_bit5 = '0' THEN
+                instruction <= ADD;
+            ELSIF funct3 = "000" AND funct7_bit5 = '1' THEN
+                instruction <= SUB;
+            END IF;
+        ELSIF op_code = OPCODE_ITYPE THEN
+            instr_type <= I;
+            IF funct3 = "000" THEN
+                instruction <= ADDI;
+            END IF;
+        ELSIF op_code = OPCODE_BEQ THEN
+            instr_type <= B;
+            -- Distinguish BEQ vs BNE using funct3
+            IF funct3 = "000" THEN
+                instruction <= BEQ;
+            ELSIF funct3 = "001" THEN
+                instruction <= BNE;
+            END IF;
+        ELSIF op_code = OPCODE_HALT THEN
+            instruction <= HALT;
+            instr_type <= R;
+        ELSE
+            instruction <= NOP;
+            instr_type <= R;
+        END IF;
+    END PROCESS;
 
     imm_sel_s <= imm_code(instr_type);
 
@@ -195,6 +226,19 @@ BEGIN
                     WHEN OPCODE_ADD =>
                         next_state   <= ALU_WB;
                         reg_write_s  <= '1';
+                        -- Set ALU control based on SUB vs ADD
+                        IF instruction = SUB THEN
+                            alu_ctrl_s <= "101";  -- SUB
+                        END IF;
+
+                    WHEN OPCODE_ITYPE =>
+                        -- I-type ALU instructions like ADDI
+                        next_state   <= ALU_WB;
+                        alu_src_a_s  <= "10";  -- rs1_reg
+                        alu_src_b_s  <= "01";  -- imm_ext
+                        result_src_s <= "01";  -- alu_result
+                        reg_write_s  <= '1';
+                        alu_ctrl_s   <= "100"; -- ADD
 
                     WHEN OPCODE_BEQ =>
                         next_state <= BRANCH;
@@ -202,7 +246,15 @@ BEGIN
                         alu_src_b_s  <= "00";
                         alu_ctrl_s   <= "101";
                         result_src_s <= "00";
-                        pc_write_s <= zero_flag;
+                        -- BNE branches when NOT equal (zero_flag = 0)
+                        IF instruction = BNE THEN
+                            pc_write_s <= NOT zero_flag;
+                        ELSE
+                            pc_write_s <= zero_flag;
+                        END IF;
+
+                    WHEN OPCODE_HALT =>
+                        next_state <= HALTED;
 
                     WHEN OTHERS =>
                         NULL;
@@ -233,6 +285,14 @@ BEGIN
                 next_state    <= FETCH;
                 ir_write_s    <= '1';
                 pc_write_s    <= '1';
+
+            WHEN HALTED =>
+                -- Stay in HALTED state until reset
+                next_state    <= HALTED;
+                pc_write_s    <= '0';
+                ir_write_s    <= '0';
+                mem_write_s   <= '0';
+                reg_write_s   <= '0';
 
             WHEN OTHERS =>
                 next_state <= FETCH;
