@@ -1,0 +1,62 @@
+========================================================================
+MULTI-CYCLE RISC-V CPU TEST PROGRAM - ASSEMBLY LISTING
+========================================================================
+
+# Test Program: Original test sequence from lab starting point
+# Memory layout: Little-endian byte order
+
+.text
+.globl _start
+
+_start:
+    lw   x6, 4(x9)       # Load word from address [x9 + 4] into x6
+    sw   x6, 20(x9)      # Store x6 to address [x9 + 20]
+    lw   x2, 8(x0)       # Load word from address 8 into x2
+    add  x8, x2, x6      # x8 = x2 + x6
+    beq  x2, x1, 128     # Branch to PC+128 if x2 == x1
+    # [Target location for sw at offset 20]
+    beq  x5, x7, -10     # Branch to PC-10 if x5 == x7
+
+========================================================================
+INSTRUCTION BREAKDOWN:
+========================================================================
+
+Addr    Machine Code    Assembly           Description
+------  ------------    ----------------   ---------------------------
+0x00    0x0044A303      lw x6, 4(x9)       I-type load
+0x04    0x0064AA23      sw x6, 20(x9)      S-type store
+0x08    0x00C02103      lw x2, 8(x0)       I-type load
+0x0C    0x00610433      add x8, x2, x6     R-type arithmetic
+0x10    0x08010063      beq x2, x1, 128    B-type branch forward
+0x14    0xFFFFFFFF      [data/nop]         Store target
+0x18    0xFE5388E3      beq x5, x7, -10    B-type branch backward
+
+========================================================================
+EXPECTED STATE TRACE:
+========================================================================
+
+Instr 1: lw x6, 4(x9)  @PC=0x00
+  RESET_INIT → FETCH → DECODE → MEM_ADR → MEM_READ → MEM_WB → FETCH
+  Result: x6 = [mem at x9+4]
+
+Instr 2: sw x6, 20(x9)  @PC=0x04
+  FETCH → DECODE → MEM_ADR → MEM_W → FETCH
+  Result: [mem at x9+20] = x6
+
+Instr 3: lw x2, 8(x0)  @PC=0x08
+  FETCH → DECODE → MEM_ADR → MEM_READ → MEM_WB → FETCH
+  Result: x2 = [mem at 0x08]
+
+Instr 4: add x8, x2, x6  @PC=0x0C
+  FETCH → DECODE → ALU_WB → FETCH
+  Result: x8 = x2 + x6
+
+Instr 5: beq x2, x1, 128  @PC=0x10
+  FETCH → DECODE → BRANCH → FETCH
+  Result: If x2==x1: PC=0x90, else PC=0x14
+
+Instr 6: beq x5, x7, -10  @PC=0x18
+  FETCH → DECODE → BRANCH → FETCH
+  Result: If x5==x7: PC=0x0E, else PC=0x1C
+
+========================================================================
