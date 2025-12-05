@@ -1,0 +1,107 @@
+========================================================================
+RISC-V Multi-Cycle CPU - Assembly Program
+Lab 3 Part 2 - Test Program
+========================================================================
+
+ASSEMBLY INSTRUCTIONS:
+========================================================================
+
+# Address 0: Load test data
+lw x1, 100(x0)      # x1 = 16 (load from memory address 100)
+
+# Address 4: Load test data
+lw x2, 104(x0)      # x2 = -8 (load from memory address 104)
+
+# Address 8: Arithmetic - ADD
+add x3, x1, x2      # x3 = x1 + x2 = 16 + (-8) = 8
+
+# Address 12: Arithmetic - SUB
+sub x4, x1, x2      # x4 = x1 - x2 = 16 - (-8) = 24
+
+# Address 16: Immediate - ADDI
+addi x5, x1, 4      # x5 = x1 + 4 = 16 + 4 = 20
+
+# Address 20: Shift Right Arithmetic Immediate (positive number)
+srai x6, x1, 2      # x6 = x1 >> 2 = 16 >> 2 = 4
+
+# Address 24: Shift Right Arithmetic Immediate (negative number)
+srai x7, x2, 1      # x7 = x2 >> 1 = -8 >> 1 = -4 (sign extends)
+
+# Address 28: Store word
+sw x3, 108(x0)      # Store x3 (8) to memory address 108
+
+# Address 32: Branch NOT taken
+beq x1, x2, 8       # Compare x1 == x2? (16 == -8?) NO, continue to next
+
+# Address 36: Execute if branch not taken
+addi x8, x1, 1      # x8 = x1 + 1 = 16 + 1 = 17 (EXECUTES)
+
+# Address 40: Branch TAKEN
+beq x1, x1, 8       # Compare x1 == x1? (16 == 16?) YES, branch to address 48
+
+# Address 44: Should be skipped
+addi x9, x0, 99     # x9 = 0 + 99 = 99 (SKIPPED due to branch)
+
+# Address 48: Branch target
+addi x9, x2, 2      # x9 = x2 + 2 = -8 + 2 = -6 (EXECUTES after branch)
+
+# Address 52: Halt
+halt                # Stop execution
+
+========================================================================
+EXPECTED REGISTER VALUES AFTER EXECUTION:
+========================================================================
+x0  = 0x00000000    (always zero)
+x1  = 0x00000010    (16 - loaded from memory)
+x2  = 0xFFFFFFF8    (-8 - loaded from memory)
+x3  = 0x00000008    (8 - result of ADD)
+x4  = 0x00000018    (24 - result of SUB)
+x5  = 0x00000014    (20 - result of ADDI)
+x6  = 0x00000004    (4 - result of SRAI positive)
+x7  = 0xFFFFFFFC    (-4 - result of SRAI negative)
+x8  = 0x00000011    (17 - result of branch not taken path)
+x9  = 0xFFFFFFFA    (-6 - result of branch taken path)
+
+========================================================================
+MEMORY MAP:
+========================================================================
+
+INSTRUCTION MEMORY (addresses 0-55):
+------------------------------------
+Address | Instruction               | Machine Code
+--------|---------------------------|-------------
+0       | lw x1, 100(x0)           | 0x06402083
+4       | lw x2, 104(x0)           | 0x06802103
+8       | add x3, x1, x2           | 0x002081B3
+12      | sub x4, x1, x2           | 0x40208233
+16      | addi x5, x1, 4           | 0x00408293
+20      | srai x6, x1, 2           | 0x4020D313
+24      | srai x7, x2, 1           | 0x40115393
+28      | sw x3, 108(x0)           | 0x06302623
+32      | beq x1, x2, 8            | 0x00200463
+36      | addi x8, x1, 1           | 0x00108413
+40      | beq x1, x1, 8            | 0x00110463
+44      | addi x9, x0, 99          | 0x06300493
+48      | addi x9, x2, 2           | 0x00210493
+52      | halt                     | 0xFFFFFFFF
+
+DATA MEMORY:
+------------------------------------
+Address | Value (hex)  | Value (dec) | Description
+--------|--------------|-------------|---------------------------
+100     | 0x00000010   | 16          | Test data for x1
+104     | 0xFFFFFFF8   | -8          | Test data for x2
+108     | 0x00000008   | 8           | Written by SW instruction (x3)
+
+========================================================================
+INSTRUCTION BREAKDOWN BY TYPE:
+========================================================================
+Load/Store Instructions:    3 (2 LW, 1 SW)
+Arithmetic R-type:           2 (1 ADD, 1 SUB)
+Immediate I-type:            4 (1 ADDI, 2 SRAI)
+Branch B-type:               2 (2 BEQ - one taken, one not)
+Control:                     1 (1 HALT)
+                            ---
+TOTAL:                      11 instructions
+
+========================================================================

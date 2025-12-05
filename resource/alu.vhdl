@@ -38,6 +38,7 @@ BEGIN
         src_a XOR src_b WHEN "011",
         STD_LOGIC_VECTOR(UNSIGNED(src_a) + UNSIGNED(src_b)) WHEN "100",
         STD_LOGIC_VECTOR(UNSIGNED(src_a) - UNSIGNED(src_b)) WHEN "101",
+        STD_LOGIC_VECTOR(SHIFT_RIGHT(SIGNED(src_a), TO_INTEGER(UNSIGNED(src_b(4 DOWNTO 0))))) WHEN "111",
         (OTHERS => '0') WHEN OTHERS;
 
 END Behavioral;

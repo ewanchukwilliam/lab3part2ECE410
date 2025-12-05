@@ -29,27 +29,55 @@ ARCHITECTURE rtl OF combined_mem IS
     -- Byte-addressable RAM
     TYPE memory_data IS ARRAY (0 TO 1023) OF STD_LOGIC_VECTOR(7 DOWNTO 0);
     SIGNAL RAM : memory_data := (
-        -- Program (little-endian)
-        -- 0x0044A303   lw x6, 4(x9)
-        0 => x"03", 1 => x"A3", 2 => x"44", 3 => x"00",
-        -- 0x0064AA23   sw x6, 20(x9)
-        4 => x"23", 5 => x"AA", 6 => x"64", 7 => x"00",
-        -- 0x00802103   lw x2, 8(x0)
-        8 => x"03", 9 => x"21", 10 => x"C0", 11 => x"00",
-        -- 0x00610433   add x8, x2, x6
-        12 => x"33", 13 => x"04", 14 => x"61", 15 => x"00",
-        -- 0x40610533   sub x10, x2, x6  -- SUB test
-        16 => x"33", 17 => x"05", 18 => x"61", 19 => x"40",
-        -- NOP (will be written by the sw instruction)
-        20 => x"FF", 21 => x"FF", 22 => x"FF", 23 => x"FF",
-        -- 0x00510593   addi x11, x2, 5  -- ADDI test
-        24 => x"93", 25 => x"05", 26 => x"51", 27 => x"00",
-        -- 0x08010063   beq x2, x1, 128  -- BEQ test (won't branch)
-        28 => x"63", 29 => x"00", 30 => x"01", 31 => x"08",
-        -- 0x4020D093   srai x1, x1, 2   -- SRAI test with signed (negative) value
-        32 => x"93", 33 => x"D0", 34 => x"20", 35 => x"40",
-        -- 0x40415113   srai x2, x2, 4   -- SRAI test with unsigned (positive) value
-        36 => x"13", 37 => x"51", 38 => x"41", 39 => x"40",
+        -- Program (little-endian) - Simple test cases with 2 registers
+
+        -- LOAD DATA: Load simple values from memory
+        -- lw x1, 100(x0)    -- Load 16 into x1
+        0 => x"83", 1 => x"20", 2 => x"40", 3 => x"06",
+        -- lw x2, 104(x0)    -- Load -8 into x2
+        4 => x"03", 5 => x"21", 6 => x"80", 7 => x"06",
+
+        -- ARITHMETIC OPERATIONS
+        -- add x3, x1, x2    -- x3 = 16 + (-8) = 8
+        8 => x"B3", 9 => x"81", 10 => x"20", 11 => x"00",
+        -- sub x4, x1, x2    -- x4 = 16 - (-8) = 24
+        12 => x"33", 13 => x"82", 14 => x"20", 15 => x"40",
+
+        -- IMMEDIATE OPERATIONS
+        -- addi x5, x1, 4    -- x5 = 16 + 4 = 20
+        16 => x"93", 17 => x"82", 18 => x"40", 19 => x"00",
+
+        -- SHIFT OPERATIONS (using existing registers)
+        -- srai x6, x1, 2    -- x6 = 16 >> 2 = 4 (positive shift)
+        20 => x"13", 21 => x"D3", 22 => x"20", 23 => x"40",
+        -- srai x7, x2, 1    -- x7 = -8 >> 1 = -4 (negative shift with sign extension)
+        24 => x"93", 25 => x"53", 26 => x"11", 27 => x"40",
+
+        -- STORE OPERATION
+        -- sw x3, 108(x0)    -- Store x3 (8) to memory address 108
+        28 => x"23", 29 => x"24", 30 => x"30", 31 => x"06",
+
+        -- BRANCH NOT TAKEN
+        -- beq x1, x2, 8     -- Compare 16 == -8? NO, don't branch
+        32 => x"63", 33 => x"04", 34 => x"20", 35 => x"00",
+        -- addi x8, x1, 1    -- x8 = 16 + 1 = 17 (this WILL execute)
+        36 => x"13", 37 => x"04", 38 => x"11", 39 => x"00",
+
+        -- BRANCH TAKEN
+        -- beq x1, x1, 8     -- Compare 16 == 16? YES, branch
+        40 => x"63", 41 => x"04", 42 => x"11", 43 => x"00",
+        -- addi x9, x0, 99   -- x9 = 99 (this will be SKIPPED)
+        44 => x"93", 45 => x"04", 46 => x"30", 47 => x"06",
+        -- addi x9, x2, 2    -- x9 = -8 + 2 = -6 (this WILL execute after branch)
+        48 => x"93", 49 => x"84", 50 => x"21", 51 => x"00",
+
+        -- HALT
+        52 => x"FF", 53 => x"FF", 54 => x"FF", 55 => x"FF",
+
+        -- DATA SECTION
+        100 => x"10", 101 => x"00", 102 => x"00", 103 => x"00",  -- 16
+        104 => x"F8", 105 => x"FF", 106 => x"FF", 107 => x"FF",  -- -8 (0xFFFFFFF8)
+
         OTHERS => (OTHERS => '0')
     );
 

@@ -224,10 +224,15 @@ BEGIN
 
                     WHEN OPCODE_ADD =>
                         next_state   <= ALU_WB;
+                        alu_src_a_s  <= "10";  -- rs1_reg
+                        alu_src_b_s  <= "00";  -- rs2_reg
+                        result_src_s <= "01";  -- alu_result
                         reg_write_s  <= '1';
                         -- Set ALU control based on SUB vs ADD
                         IF instruction = SUB THEN
                             alu_ctrl_s <= "101";  -- SUB
+                        ELSE
+                            alu_ctrl_s <= "100";  -- ADD
                         END IF;
 
                     WHEN OPCODE_ITYPE =>
@@ -278,6 +283,7 @@ BEGIN
 
             WHEN MEM_READ =>
                 next_state   <= MEM_WB;
+                adr_src_s    <= '1';
                 result_src_s <= "10";
                 reg_write_s  <= '1';
 
