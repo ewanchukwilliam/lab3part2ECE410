@@ -38,12 +38,18 @@ ARCHITECTURE rtl OF combined_mem IS
         8 => x"03", 9 => x"21", 10 => x"C0", 11 => x"00",
         -- 0x00610433   add x8, x2, x6
         12 => x"33", 13 => x"04", 14 => x"61", 15 => x"00",
-        -- 0x08010063   beq x2, x1, 128
-        16 => x"63", 17 => x"00", 18 => x"01", 19 => x"08",
+        -- 0x40610533   sub x10, x2, x6  -- SUB test
+        16 => x"33", 17 => x"05", 18 => x"61", 19 => x"40",
         -- NOP (will be written by the sw instruction)
         20 => x"FF", 21 => x"FF", 22 => x"FF", 23 => x"FF",
-        -- 0xFE5388E3   beq x5, x7, -10
-        24 => x"E3", 25 => x"88", 26 => x"53", 27 => x"FE",
+        -- 0x00510593   addi x11, x2, 5  -- ADDI test
+        24 => x"93", 25 => x"05", 26 => x"51", 27 => x"00",
+        -- 0x08010063   beq x2, x1, 128  -- BEQ test (won't branch)
+        28 => x"63", 29 => x"00", 30 => x"01", 31 => x"08",
+        -- 0x4020D093   srai x1, x1, 2   -- SRAI test with signed (negative) value
+        32 => x"93", 33 => x"D0", 34 => x"20", 35 => x"40",
+        -- 0x40415113   srai x2, x2, 4   -- SRAI test with unsigned (positive) value
+        36 => x"13", 37 => x"51", 38 => x"41", 39 => x"40",
         OTHERS => (OTHERS => '0')
     );
 

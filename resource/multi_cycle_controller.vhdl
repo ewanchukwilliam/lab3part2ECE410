@@ -43,7 +43,7 @@ ARCHITECTURE behavioral OF multi_cycle_controller IS
     --------------------------------------------------------------------------
     -- State and Instruction Type Definitions
     --------------------------------------------------------------------------
-    TYPE instr IS (LW, SW, ADD, SUB, ADDI, BEQ, BNE, HALT, NOP);
+    TYPE instr IS (LW, SW, ADD, SUB, ADDI, BEQ, SRAI, HALT, NOP);
     TYPE instruction_type IS (U, J, I, S, B, R);
     TYPE state_type IS (
         RESET_INIT,
@@ -143,14 +143,13 @@ BEGIN
             instr_type <= I;
             IF funct3 = "000" THEN
                 instruction <= ADDI;
+            ELSIF funct3 = "101" AND funct7_bit5 = '1' THEN
+                instruction <= SRAI;
             END IF;
         ELSIF op_code = OPCODE_BEQ THEN
             instr_type <= B;
-            -- Distinguish BEQ vs BNE using funct3
             IF funct3 = "000" THEN
                 instruction <= BEQ;
-            ELSIF funct3 = "001" THEN
-                instruction <= BNE;
             END IF;
         ELSIF op_code = OPCODE_HALT THEN
             instruction <= HALT;
@@ -232,13 +231,18 @@ BEGIN
                         END IF;
 
                     WHEN OPCODE_ITYPE =>
-                        -- I-type ALU instructions like ADDI
+                        -- I-type ALU instructions like ADDI and SRAI
                         next_state   <= ALU_WB;
                         alu_src_a_s  <= "10";  -- rs1_reg
                         alu_src_b_s  <= "01";  -- imm_ext
                         result_src_s <= "01";  -- alu_result
                         reg_write_s  <= '1';
-                        alu_ctrl_s   <= "100"; -- ADD
+                        -- Set ALU control based on instruction type
+                        IF instruction = SRAI THEN
+                            alu_ctrl_s <= "111";  -- Shift Right Arithmetic
+                        ELSE
+                            alu_ctrl_s <= "100";  -- ADD (for ADDI)
+                        END IF;
 
                     WHEN OPCODE_BEQ =>
                         next_state <= BRANCH;
@@ -246,12 +250,8 @@ BEGIN
                         alu_src_b_s  <= "00";
                         alu_ctrl_s   <= "101";
                         result_src_s <= "00";
-                        -- BNE branches when NOT equal (zero_flag = 0)
-                        IF instruction = BNE THEN
-                            pc_write_s <= NOT zero_flag;
-                        ELSE
-                            pc_write_s <= zero_flag;
-                        END IF;
+                        -- BEQ branches when equal (zero_flag = 1)
+                        pc_write_s <= zero_flag;
 
                     WHEN OPCODE_HALT =>
                         next_state <= HALTED;
