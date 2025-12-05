@@ -63,7 +63,9 @@ ARCHITECTURE rtl OF combined_mem IS
     SIGNAL addr_int : INTEGER := 0;
 
 BEGIN
-    addr_int <= to_integer(unsigned(address(9 DOWNTO 0))); -- Address conversion fits 1 KB
+    -- Limit address to prevent out-of-bounds access when reading 4 bytes
+    addr_int <= to_integer(unsigned(address(9 DOWNTO 0))) WHEN unsigned(address(9 DOWNTO 0)) <= 1020
+                ELSE 0;
 
     PROCESS (clock)
     BEGIN
