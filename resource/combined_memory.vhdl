@@ -44,7 +44,7 @@ ARCHITECTURE rtl OF combined_mem IS
 
         -- SHIFT OPERATIONS (divide by 2)
         -- srai x4, x3, 1    -- x4 = 30 >> 1 = 15 (average)
-        12 => x"93", 13 => x"D1", 14 => x"31", 15 => x"40",
+        12 => x"13", 13 => x"D2", 14 => x"11", 15 => x"40",
 
         -- STORE OPERATION
         -- sw x4, 108(x0)    -- Store x4 (15) to memory address 108
