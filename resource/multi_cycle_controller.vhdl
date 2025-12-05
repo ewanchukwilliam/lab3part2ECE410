@@ -287,7 +287,14 @@ BEGIN
                 result_src_s <= "10";
                 reg_write_s  <= '1';
 
-            WHEN MEM_WB | ALU_WB | MEM_W | BRANCH =>
+            WHEN MEM_WB =>
+                next_state    <= FETCH;
+                adr_src_s     <= '1';  -- Keep data address stable
+                result_src_s  <= "10"; -- Select data_reg
+                ir_write_s    <= '1';
+                pc_write_s    <= '1';
+
+            WHEN ALU_WB | MEM_W | BRANCH =>
                 next_state    <= FETCH;
                 ir_write_s    <= '1';
                 pc_write_s    <= '1';
