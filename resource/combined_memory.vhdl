@@ -32,34 +32,30 @@ ARCHITECTURE rtl OF combined_mem IS
         -- Program: Average of Two Numbers Calculator
         -- Calculates (num1 + num2) / 2 and stores result
 
-        -- Load first number from memory
-        -- lw x1, 100(x0)    -- x1 = 10 (first number)
+        -- LOAD DATA: Load simple values from memory
+        -- lw x1, 100(x0)    -- Load 10 into x1
         0 => x"83", 1 => x"20", 2 => x"40", 3 => x"06",
-
-        -- Load second number from memory
-        -- lw x2, 104(x0)    -- x2 = 20 (second number)
+        -- lw x2, 104(x0)    -- Load 20 into x2
         4 => x"03", 5 => x"21", 6 => x"80", 7 => x"06",
 
-        -- Add the two numbers
+        -- ARITHMETIC OPERATIONS
         -- add x3, x1, x2    -- x3 = 10 + 20 = 30
         8 => x"B3", 9 => x"81", 10 => x"20", 11 => x"00",
 
-        -- Divide by 2 (shift right by 1)
+        -- SHIFT OPERATIONS (divide by 2)
         -- srai x4, x3, 1    -- x4 = 30 >> 1 = 15 (average)
-        12 => x"13", 13 => x"D2", 14 => x"11", 15 => x"40",
+        12 => x"93", 13 => x"D1", 14 => x"31", 15 => x"40",
 
-        -- Store result to memory
-        -- sw x4, 108(x0)    -- Store average (15) to address 108
-        16 => x"23", 17 => x"62", 18 => x"40", 19 => x"06",
+        -- STORE OPERATION
+        -- sw x4, 108(x0)    -- Store x4 (15) to memory address 108
+        16 => x"23", 17 => x"26", 18 => x"40", 19 => x"06",
 
-        -- Halt execution
-        -- halt
+        -- HALT
         20 => x"FF", 21 => x"FF", 22 => x"FF", 23 => x"FF",
 
         -- DATA SECTION
-        100 => x"0A", 101 => x"00", 102 => x"00", 103 => x"00",  -- 10 (first number)
-        104 => x"14", 105 => x"00", 106 => x"00", 107 => x"00",  -- 20 (second number)
-        -- 108 will contain result: 15 (0x0F) after program runs
+        100 => x"0A", 101 => x"00", 102 => x"00", 103 => x"00",  -- 10
+        104 => x"14", 105 => x"00", 106 => x"00", 107 => x"00",  -- 20
 
         OTHERS => (OTHERS => '0')
     );

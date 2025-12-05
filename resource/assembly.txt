@@ -53,7 +53,7 @@ Address | Instruction               | Machine Code
 4       | lw x2, 104(x0)           | 0x06802103
 8       | add x3, x1, x2           | 0x002081B3
 12      | srai x4, x3, 1           | 0x4011D213
-16      | sw x4, 108(x0)           | 0x06402423
+16      | sw x4, 108(x0)           | 0x06402623
 20      | halt                     | 0xFFFFFFFF
 
 DATA MEMORY:
