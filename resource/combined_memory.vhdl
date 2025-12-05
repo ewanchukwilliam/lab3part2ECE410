@@ -50,7 +50,7 @@ ARCHITECTURE rtl OF combined_mem IS
         -- addi x5, x0, 15    -- x5 = 15 (expected value)
         16 => x"93", 17 => x"02", 18 => x"F0", 19 => x"00",
         -- beq x4, x5, 12     -- If x4 == 15, branch to success (skip fail case)
-        20 => x"63", 21 => x"0C", 22 => x"52", 23 => x"00",
+        20 => x"63", 21 => x"06", 22 => x"52", 23 => x"00",
 
         -- FAIL case: x4 != 15
         -- addi x5, x0, -1    -- x5 = -1 (error indicator)
