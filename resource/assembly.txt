@@ -78,9 +78,9 @@ Address | Instruction               | Machine Code
 20      | srai x6, x1, 2           | 0x4020D313
 24      | srai x7, x2, 1           | 0x40115393
 28      | sw x3, 108(x0)           | 0x06302623
-32      | beq x1, x2, 8            | 0x00200463
+32      | beq x1, x2, 8            | 0x00208463
 36      | addi x8, x1, 1           | 0x00108413
-40      | beq x1, x1, 8            | 0x00110463
+40      | beq x1, x1, 8            | 0x00108463
 44      | addi x9, x0, 99          | 0x06300493
 48      | addi x9, x2, 2           | 0x00210493
 52      | halt                     | 0xFFFFFFFF
