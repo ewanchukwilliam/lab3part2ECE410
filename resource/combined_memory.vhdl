@@ -46,12 +46,30 @@ ARCHITECTURE rtl OF combined_mem IS
         -- srai x4, x3, 1    -- x4 = 30 >> 1 = 15 (average)
         12 => x"13", 13 => x"D2", 14 => x"11", 15 => x"40",
 
-        -- STORE OPERATION
-        -- sw x4, 108(x0)    -- Store x4 (15) to memory address 108
-        16 => x"23", 17 => x"26", 18 => x"40", 19 => x"06",
+        -- VERIFICATION: Check if result is correct
+        -- addi x5, x0, 15    -- x5 = 15 (expected value)
+        16 => x"93", 17 => x"02", 18 => x"F0", 19 => x"00",
+        -- beq x4, x5, 12     -- If x4 == 15, branch to success (skip fail case)
+        20 => x"63", 21 => x"0C", 22 => x"52", 23 => x"00",
+
+        -- FAIL case: x4 != 15
+        -- addi x5, x0, -1    -- x5 = -1 (error indicator)
+        24 => x"93", 25 => x"02", 26 => x"F0", 27 => x"FF",
+        -- beq x0, x0, 8      -- Unconditional branch, skip success case
+        28 => x"63", 29 => x"08", 30 => x"00", 31 => x"00",
+
+        -- SUCCESS case: x4 == 15
+        -- addi x5, x0, 1     -- x5 = 1 (success indicator)
+        32 => x"93", 33 => x"02", 34 => x"10", 35 => x"00",
+
+        -- STORE OPERATIONS
+        -- sw x4, 108(x0)     -- Store result (15) to memory address 108
+        36 => x"23", 37 => x"26", 38 => x"40", 39 => x"06",
+        -- sw x5, 112(x0)     -- Store verification flag to address 112
+        40 => x"23", 41 => x"28", 42 => x"50", 43 => x"06",
 
         -- HALT
-        20 => x"FF", 21 => x"FF", 22 => x"FF", 23 => x"FF",
+        44 => x"FF", 45 => x"FF", 46 => x"FF", 47 => x"FF",
 
         -- DATA SECTION
         100 => x"0A", 101 => x"00", 102 => x"00", 103 => x"00",  -- 10
