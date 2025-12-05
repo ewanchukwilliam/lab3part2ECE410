@@ -50,7 +50,7 @@ ARCHITECTURE rtl OF combined_mem IS
 
         -- Store result to memory
         -- sw x4, 108(x0)    -- Store average (15) to address 108
-        16 => x"23", 17 => x"26", 18 => x"C0", 19 => x"06",
+        16 => x"23", 17 => x"62", 18 => x"40", 19 => x"06",
 
         -- Halt execution
         -- halt
