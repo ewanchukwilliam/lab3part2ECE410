@@ -59,13 +59,13 @@ ARCHITECTURE rtl OF combined_mem IS
 
         -- BRANCH NOT TAKEN
         -- beq x1, x2, 8     -- Compare 16 == -8? NO, don't branch
-        32 => x"63", 33 => x"04", 34 => x"20", 35 => x"00",
+        32 => x"63", 33 => x"04", 34 => x"21", 35 => x"00",
         -- addi x8, x1, 1    -- x8 = 16 + 1 = 17 (this WILL execute)
         36 => x"13", 37 => x"04", 38 => x"11", 39 => x"00",
 
         -- BRANCH TAKEN
         -- beq x1, x1, 8     -- Compare 16 == 16? YES, branch
-        40 => x"63", 41 => x"04", 42 => x"11", 43 => x"00",
+        40 => x"63", 41 => x"04", 42 => x"10", 43 => x"00",
         -- addi x9, x0, 99   -- x9 = 99 (this will be SKIPPED)
         44 => x"93", 45 => x"04", 46 => x"30", 47 => x"06",
         -- addi x9, x2, 2    -- x9 = -8 + 2 = -6 (this WILL execute after branch)
