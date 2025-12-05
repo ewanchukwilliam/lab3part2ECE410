@@ -1,107 +1,122 @@
 ========================================================================
 RISC-V Multi-Cycle CPU - Assembly Program
-Lab 3 Part 2 - Test Program
+Lab 3 Part 2 - Average Calculator
 ========================================================================
 
+PROGRAM DESCRIPTION:
+This program calculates the average of two numbers stored in memory.
+It loads two values, adds them together, divides by 2 using arithmetic
+right shift, and stores the result back to memory.
+
+Formula: average = (num1 + num2) / 2
+
+========================================================================
 ASSEMBLY INSTRUCTIONS:
 ========================================================================
 
-# Address 0: Load test data
-lw x1, 100(x0)      # x1 = 16 (load from memory address 100)
+# Address 0: Load first number
+lw x1, 100(x0)       # x1 = 10 (load first number from address 100)
 
-# Address 4: Load test data
-lw x2, 104(x0)      # x2 = -8 (load from memory address 104)
+# Address 4: Load second number
+lw x2, 104(x0)       # x2 = 20 (load second number from address 104)
 
-# Address 8: Arithmetic - ADD
-add x3, x1, x2      # x3 = x1 + x2 = 16 + (-8) = 8
+# Address 8: Add the two numbers
+add x3, x1, x2       # x3 = x1 + x2 = 10 + 20 = 30
 
-# Address 12: Arithmetic - SUB
-sub x4, x1, x2      # x4 = x1 - x2 = 16 - (-8) = 24
+# Address 12: Divide by 2 (arithmetic right shift by 1)
+srai x4, x3, 1       # x4 = x3 >> 1 = 30 >> 1 = 15 (average)
 
-# Address 16: Immediate - ADDI
-addi x5, x1, 4      # x5 = x1 + 4 = 16 + 4 = 20
+# Address 16: Store result to memory
+sw x4, 108(x0)       # Store x4 (15) to memory address 108
 
-# Address 20: Shift Right Arithmetic Immediate (positive number)
-srai x6, x1, 2      # x6 = x1 >> 2 = 16 >> 2 = 4
-
-# Address 24: Shift Right Arithmetic Immediate (negative number)
-srai x7, x2, 1      # x7 = x2 >> 1 = -8 >> 1 = -4 (sign extends)
-
-# Address 28: Store word
-sw x3, 108(x0)      # Store x3 (8) to memory address 108
-
-# Address 32: Branch NOT taken
-beq x1, x2, 8       # Compare x1 == x2? (16 == -8?) NO, continue to next
-
-# Address 36: Execute if branch not taken
-addi x8, x1, 1      # x8 = x1 + 1 = 16 + 1 = 17 (EXECUTES)
-
-# Address 40: Branch TAKEN
-beq x1, x1, 8       # Compare x1 == x1? (16 == 16?) YES, branch to address 48
-
-# Address 44: Should be skipped
-addi x9, x0, 99     # x9 = 0 + 99 = 99 (SKIPPED due to branch)
-
-# Address 48: Branch target
-addi x9, x2, 2      # x9 = x2 + 2 = -8 + 2 = -6 (EXECUTES after branch)
-
-# Address 52: Halt
-halt                # Stop execution
+# Address 20: Halt execution
+halt                 # Stop CPU execution
 
 ========================================================================
 EXPECTED REGISTER VALUES AFTER EXECUTION:
 ========================================================================
 x0  = 0x00000000    (always zero)
-x1  = 0x00000010    (16 - loaded from memory)
-x2  = 0xFFFFFFF8    (-8 - loaded from memory)
-x3  = 0x00000008    (8 - result of ADD)
-x4  = 0x00000018    (24 - result of SUB)
-x5  = 0x00000014    (20 - result of ADDI)
-x6  = 0x00000004    (4 - result of SRAI positive)
-x7  = 0xFFFFFFFC    (-4 - result of SRAI negative)
-x8  = 0x00000011    (17 - result of branch not taken path)
-x9  = 0xFFFFFFFA    (-6 - result of branch taken path)
+x1  = 0x0000000A    (10 - first number loaded from memory)
+x2  = 0x00000014    (20 - second number loaded from memory)
+x3  = 0x0000001E    (30 - sum of x1 + x2)
+x4  = 0x0000000F    (15 - average result)
 
 ========================================================================
 MEMORY MAP:
 ========================================================================
 
-INSTRUCTION MEMORY (addresses 0-55):
+INSTRUCTION MEMORY (addresses 0-23):
 ------------------------------------
 Address | Instruction               | Machine Code
 --------|---------------------------|-------------
 0       | lw x1, 100(x0)           | 0x06402083
 4       | lw x2, 104(x0)           | 0x06802103
 8       | add x3, x1, x2           | 0x002081B3
-12      | sub x4, x1, x2           | 0x40208233
-16      | addi x5, x1, 4           | 0x00408293
-20      | srai x6, x1, 2           | 0x4020D313
-24      | srai x7, x2, 1           | 0x40115393
-28      | sw x3, 108(x0)           | 0x06302623
-32      | beq x1, x2, 8            | 0x00208463
-36      | addi x8, x1, 1           | 0x00108413
-40      | beq x1, x1, 8            | 0x00108463
-44      | addi x9, x0, 99          | 0x06300493
-48      | addi x9, x2, 2           | 0x00210493
-52      | halt                     | 0xFFFFFFFF
+12      | srai x4, x3, 1           | 0x4011D213
+16      | sw x4, 108(x0)           | 0x06402423
+20      | halt                     | 0xFFFFFFFF
 
 DATA MEMORY:
 ------------------------------------
 Address | Value (hex)  | Value (dec) | Description
 --------|--------------|-------------|---------------------------
-100     | 0x00000010   | 16          | Test data for x1
-104     | 0xFFFFFFF8   | -8          | Test data for x2
-108     | 0x00000008   | 8           | Written by SW instruction (x3)
+100     | 0x0000000A   | 10          | First input number
+104     | 0x00000014   | 20          | Second input number
+108     | 0x0000000F   | 15          | Result (average) - written by SW
 
 ========================================================================
 INSTRUCTION BREAKDOWN BY TYPE:
 ========================================================================
-Load/Store Instructions:    3 (2 LW, 1 SW)
-Arithmetic R-type:           2 (1 ADD, 1 SUB)
-Immediate I-type:            4 (1 ADDI, 2 SRAI)
-Branch B-type:               2 (2 BEQ - one taken, one not)
-Control:                     1 (1 HALT)
-                            ---
-TOTAL:                      11 instructions
+Load Instructions:       2 (LW)
+Arithmetic R-type:       1 (ADD)
+Shift I-type:            1 (SRAI)
+Store Instructions:      1 (SW)
+Control:                 1 (HALT)
+                        ---
+TOTAL:                  6 instructions
+
+========================================================================
+EXECUTION TRACE:
+========================================================================
+
+Step 1: LW x1, 100(x0)
+  - Loads value from memory address 100 (decimal 10) into register x1
+  - Cycles: FETCH → DECODE → MEM_ADR → MEM_READ → MEM_WB
+
+Step 2: LW x2, 104(x0)
+  - Loads value from memory address 104 (decimal 20) into register x2
+  - Cycles: FETCH → DECODE → MEM_ADR → MEM_READ → MEM_WB
+
+Step 3: ADD x3, x1, x2
+  - Adds x1 (10) and x2 (20), stores result (30) in x3
+  - Cycles: FETCH → DECODE → ALU_WB
+
+Step 4: SRAI x4, x3, 1
+  - Shifts x3 (30) right by 1 bit: 30 >> 1 = 15
+  - Stores result (15) in x4
+  - This performs division by 2
+  - Cycles: FETCH → DECODE → ALU_WB
+
+Step 5: SW x4, 108(x0)
+  - Stores x4 (15) to memory address 108
+  - Cycles: FETCH → DECODE → MEM_ADR → MEM_W
+
+Step 6: HALT
+  - Stops CPU execution
+  - Remains in HALTED state
+
+========================================================================
+VERIFICATION:
+========================================================================
+
+Input:  num1 = 10, num2 = 20
+Calculation: (10 + 20) / 2 = 30 / 2 = 15
+Output: Memory[108] = 15 (0x0F)
+
+Expected waveform results:
+- After LW instructions: x1=10, x2=20
+- After ADD: x3=30
+- After SRAI: x4=15
+- After SW: Memory address 108 contains 0x0000000F
 
 ========================================================================
