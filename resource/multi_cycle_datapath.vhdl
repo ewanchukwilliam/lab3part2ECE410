@@ -32,14 +32,7 @@ ENTITY multi_cycle_datapath IS
         funct3      : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
         funct7_bit5 : OUT STD_LOGIC;
         zero_flag   : OUT STD_LOGIC;
-        dp_out      : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-        ------------------------------------------------------------------------
-        -- DEBUG SECTION: Signals for simulation visibility
-        ------------------------------------------------------------------------
-        debug_pc          : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-        debug_instruction : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-        debug_alu_result  : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+        dp_out      : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
     );
 END ENTITY;
 
@@ -218,12 +211,5 @@ BEGIN
             buffer_input  => result_mux_o,
             buffer_output => dp_out
         );
-
-    --------------------------------------------------------------------
-    -- DEBUG SECTION: Expose internal signals for simulation
-    --------------------------------------------------------------------
-    debug_pc          <= pc;
-    debug_instruction <= instruction;
-    debug_alu_result  <= alu_result;
 
 END structural;
